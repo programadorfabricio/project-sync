@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0f1420;
+  --surface: #171e2e;
+  --surface-2: #1f2740;
+  --border: #2a3350;
+  --text: #e8eaf0;
+  --text-muted: #8b93a7;
+  --accent: #ff6b4a;
+  --accent-soft: #ff6b4a22;
+  --sync: #5b8def;
+  --sync-soft: #5b8def22;
+  --xp: #f2b84b;
+  --success: #34d399;
+  --success-soft: #34d39922;
+  --danger: #f0556b;
+  --danger-soft: #f0556b22;
+  --font-display: "Segoe UI", -apple-system, "Avenir Next", Avenir, system-ui, sans-serif;
+  --font-body: -apple-system, "Segoe UI", system-ui, Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+@keyframes pulse-sync {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.4;
+  }
+}
+
+.pulse-dot {
+  position: relative;
+}
+
+.pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: pulse-sync 2s ease-in-out infinite;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
