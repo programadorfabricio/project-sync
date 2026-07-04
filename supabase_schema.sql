@@ -189,6 +189,26 @@ create policy "Autenticados atualizam tarefas"
 create policy "Autenticados deletam tarefas"
   on tarefas for delete using ( auth.role() = 'authenticated' );
 
+create table if not exists tarefa_itens (
+  id uuid primary key default uuid_generate_v4(),
+  tarefa_id uuid not null references tarefas(id) on delete cascade,
+  texto text not null,
+  concluido boolean not null default false,
+  ordem int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table tarefa_itens enable row level security;
+
+create policy "Autenticados veem todos os itens de tarefas"
+  on tarefa_itens for select using ( auth.role() = 'authenticated' );
+create policy "Autenticados criam itens de tarefas"
+  on tarefa_itens for insert with check ( auth.role() = 'authenticated' );
+create policy "Autenticados atualizam itens de tarefas"
+  on tarefa_itens for update using ( auth.role() = 'authenticated' );
+create policy "Autenticados deletam itens de tarefas"
+  on tarefa_itens for delete using ( auth.role() = 'authenticated' );
+
 -- ------------------------------------------------------------
 -- Função utilitária: dar XP e atualizar sequência do perfil
 -- ------------------------------------------------------------
