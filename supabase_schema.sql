@@ -50,6 +50,34 @@ create trigger on_auth_user_created
   for each row execute procedure public.criar_perfil_automatico();
 
 -- ------------------------------------------------------------
+-- PROJETOS
+-- ------------------------------------------------------------
+create table if not exists projetos (
+  id uuid primary key default uuid_generate_v4(),
+  nome text not null,
+  descricao text,
+  cor text not null default '#ff6b4a',
+  prazo date,
+  status text not null default 'em_andamento'
+    check (status in ('planejado','em_andamento','pausado','concluido','cancelado')),
+  responsavel_id uuid not null references perfis(id),
+  criado_por uuid not null references perfis(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table projetos enable row level security;
+
+create policy "Autenticados veem todos os projetos"
+  on projetos for select using ( auth.role() = 'authenticated' );
+create policy "Autenticados criam projetos"
+  on projetos for insert with check ( auth.role() = 'authenticated' );
+create policy "Autenticados atualizam projetos"
+  on projetos for update using ( auth.role() = 'authenticated' );
+create policy "Autenticados deletam projetos"
+  on projetos for delete using ( auth.role() = 'authenticated' );
+
+-- ------------------------------------------------------------
 -- IDEIAS
 -- ------------------------------------------------------------
 create table if not exists ideias (
@@ -64,6 +92,7 @@ create table if not exists ideias (
     check (status in ('nova','em_analise','aprovada','descartada')),
   responsavel_id uuid references perfis(id),
   criado_por uuid not null references perfis(id),
+  projeto_id uuid references projetos(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -143,6 +172,7 @@ create table if not exists tarefas (
     check (status in ('a_fazer','em_andamento','em_revisao','concluido')),
   responsavel_id uuid references perfis(id),
   criado_por uuid not null references perfis(id),
+  projeto_id uuid references projetos(id),
   tempo_gasto_minutos integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "◆" },
+  { href: "/projetos", label: "Projetos", icon: "▣" },
   { href: "/ideias", label: "Ideias", icon: "✦" },
   { href: "/metas", label: "Metas", icon: "◎" },
   { href: "/tarefas", label: "Tarefas", icon: "▦" },
@@ -42,7 +43,7 @@ export default function AppLayout({ children }) {
 
         <nav className="flex flex-col gap-1">
           {NAV.map((item) => {
-            const ativo = pathname === item.href;
+            const ativo = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}
