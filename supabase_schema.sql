@@ -108,6 +108,26 @@ create policy "Dono ou qualquer autenticado atualiza metas"
 create policy "Autenticados deletam metas"
   on metas for delete using ( auth.role() = 'authenticated' );
 
+create table if not exists meta_itens (
+  id uuid primary key default uuid_generate_v4(),
+  meta_id uuid not null references metas(id) on delete cascade,
+  texto text not null,
+  concluido boolean not null default false,
+  ordem int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table meta_itens enable row level security;
+
+create policy "Autenticados veem todos os itens de metas"
+  on meta_itens for select using ( auth.role() = 'authenticated' );
+create policy "Autenticados criam itens de metas"
+  on meta_itens for insert with check ( auth.role() = 'authenticated' );
+create policy "Autenticados atualizam itens de metas"
+  on meta_itens for update using ( auth.role() = 'authenticated' );
+create policy "Autenticados deletam itens de metas"
+  on meta_itens for delete using ( auth.role() = 'authenticated' );
+
 -- ------------------------------------------------------------
 -- TAREFAS
 -- ------------------------------------------------------------

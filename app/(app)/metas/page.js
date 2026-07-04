@@ -16,13 +16,32 @@ export default function MetasPage() {
   const [tipo, setTipo] = useState("diaria");
   const [modalAberto, setModalAberto] = useState(false);
   const [form, setForm] = useState({ titulo: "", valor_alvo: 1, unidade: "horas" });
+  const [itensPorMeta, setItensPorMeta] = useState({});
+  const [expandidas, setExpandidas] = useState(new Set());
+  const [novoItemTexto, setNovoItemTexto] = useState({});
 
   async function carregar() {
     const { data } = await supabase
       .from("metas")
       .select("*, responsavel:responsavel_id(nome, avatar_emoji)")
       .order("created_at", { ascending: false });
-    setMetas(data ?? []);
+    const listaMetas = data ?? [];
+    setMetas(listaMetas);
+
+    if (listaMetas.length === 0) {
+      setItensPorMeta({});
+      return;
+    }
+    const { data: itens } = await supabase
+      .from("meta_itens")
+      .select("*")
+      .in("meta_id", listaMetas.map((m) => m.id))
+      .order("ordem", { ascending: true });
+    const agrupado = {};
+    for (const item of itens ?? []) {
+      (agrupado[item.meta_id] ??= []).push(item);
+    }
+    setItensPorMeta(agrupado);
   }
 
   useEffect(() => {
@@ -65,6 +84,54 @@ export default function MetasPage() {
 
   async function excluir(id) {
     await supabase.from("metas").delete().eq("id", id);
+    carregar();
+  }
+
+  function alternarExpandir(metaId) {
+    setExpandidas((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(metaId)) novo.delete(metaId);
+      else novo.add(metaId);
+      return novo;
+    });
+  }
+
+  async function sincronizarConclusao(meta, itensAtualizados) {
+    if (itensAtualizados.length === 0) return;
+    const concluidaAntes = meta.concluida;
+    const concluidaAgora = itensAtualizados.every((i) => i.concluido);
+
+    if (concluidaAgora !== concluidaAntes) {
+      await supabase.from("metas").update({ concluida: concluidaAgora }).eq("id", meta.id);
+    }
+    if (!concluidaAntes && concluidaAgora && meta.responsavel_id === perfil.id) {
+      await supabase.rpc("dar_xp", { usuario_id: perfil.id, quantidade: 20 });
+      recarregarPerfil();
+    }
+  }
+
+  async function adicionarItem(meta, texto) {
+    if (!texto.trim()) return;
+    const itensAtuais = itensPorMeta[meta.id] ?? [];
+    const { data: novoItem } = await supabase
+      .from("meta_itens")
+      .insert({ meta_id: meta.id, texto: texto.trim(), ordem: itensAtuais.length })
+      .select()
+      .single();
+    setNovoItemTexto((prev) => ({ ...prev, [meta.id]: "" }));
+    if (novoItem) {
+      await sincronizarConclusao(meta, [...itensAtuais, novoItem]);
+    }
+    carregar();
+  }
+
+  async function alternarItem(meta, item) {
+    const concluido = !item.concluido;
+    await supabase.from("meta_itens").update({ concluido }).eq("id", item.id);
+    const itensAtualizados = (itensPorMeta[meta.id] ?? []).map((i) =>
+      i.id === item.id ? { ...i, concluido } : i
+    );
+    await sincronizarConclusao(meta, itensAtualizados);
     carregar();
   }
 
@@ -114,23 +181,47 @@ export default function MetasPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {filtradas.map((meta) => {
-          const pct = Math.min(100, Math.round((meta.valor_atual / meta.valor_alvo) * 100));
+          const itens = itensPorMeta[meta.id] ?? [];
+          const temChecklist = itens.length > 0;
+          const concluidosChecklist = itens.filter((i) => i.concluido).length;
+          const pct = temChecklist
+            ? Math.round((concluidosChecklist / itens.length) * 100)
+            : Math.min(100, Math.round((meta.valor_atual / meta.valor_alvo) * 100));
+          const concluidaEfetiva = temChecklist ? concluidosChecklist === itens.length : meta.concluida;
+          const souDono = meta.responsavel_id === perfil?.id;
+          const expandida = expandidas.has(meta.id);
+
           return (
             <div
               key={meta.id}
               className="rounded-xl p-5 border flex flex-col gap-3"
               style={{ background: "var(--surface)", borderColor: "var(--border)" }}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-semibold text-sm">{meta.titulo}</h3>
-                  {meta.responsavel && (
-                    <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                      Criada por {meta.responsavel.avatar_emoji} {meta.responsavel.nome}
-                    </p>
-                  )}
+              <div
+                className="flex items-start justify-between gap-2 cursor-pointer"
+                onClick={() => alternarExpandir(meta.id)}
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-xs mt-1 leading-none" style={{ color: "var(--text-muted)" }}>
+                    {expandida ? "▾" : "▸"}
+                  </span>
+                  <div>
+                    <h3 className="font-semibold text-sm">{meta.titulo}</h3>
+                    {meta.responsavel && (
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                        Criada por {meta.responsavel.avatar_emoji} {meta.responsavel.nome}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <button onClick={() => excluir(meta.id)} className="text-xs shrink-0" style={{ color: "var(--text-muted)" }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    excluir(meta.id);
+                  }}
+                  className="text-xs shrink-0"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   excluir
                 </button>
               </div>
@@ -138,9 +229,11 @@ export default function MetasPage() {
               <div>
                 <div className="flex justify-between text-xs mb-1.5">
                   <span style={{ color: "var(--text-muted)" }}>
-                    {meta.valor_atual} / {meta.valor_alvo} {meta.unidade}
+                    {temChecklist
+                      ? `${concluidosChecklist} / ${itens.length} itens`
+                      : `${meta.valor_atual} / ${meta.valor_alvo} ${meta.unidade}`}
                   </span>
-                  <span style={{ color: meta.concluida ? "var(--success)" : "var(--text-muted)" }}>
+                  <span style={{ color: concluidaEfetiva ? "var(--success)" : "var(--text-muted)" }}>
                     {pct}%
                   </span>
                 </div>
@@ -149,13 +242,13 @@ export default function MetasPage() {
                     className="h-full rounded-full transition-all"
                     style={{
                       width: `${pct}%`,
-                      background: meta.concluida ? "var(--success)" : "var(--sync)",
+                      background: concluidaEfetiva ? "var(--success)" : "var(--sync)",
                     }}
                   />
                 </div>
               </div>
 
-              {meta.responsavel_id === perfil?.id && !meta.concluida && (
+              {!temChecklist && souDono && !meta.concluida && (
                 <div className="flex gap-2">
                   <button
                     onClick={() => atualizarProgresso(meta, meta.valor_atual + 1)}
@@ -173,10 +266,70 @@ export default function MetasPage() {
                   </button>
                 </div>
               )}
-              {meta.concluida && (
+              {concluidaEfetiva && (
                 <p className="text-xs font-medium" style={{ color: "var(--success)" }}>
                   ✓ Concluída
                 </p>
+              )}
+
+              {expandida && (
+                <div className="flex flex-col gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+                  {itens.length === 0 && (
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      Nenhum item na checklist ainda.
+                    </p>
+                  )}
+                  {itens.map((item) => (
+                    <label
+                      key={item.id}
+                      className="flex items-center gap-2 text-xs"
+                      style={{ cursor: souDono ? "pointer" : "default" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={item.concluido}
+                        disabled={!souDono}
+                        onChange={() => alternarItem(meta, item)}
+                      />
+                      <span
+                        style={{
+                          color: item.concluido ? "var(--text-muted)" : "var(--text)",
+                          textDecoration: item.concluido ? "line-through" : "none",
+                        }}
+                      >
+                        {item.texto}
+                      </span>
+                    </label>
+                  ))}
+
+                  {souDono && (
+                    <form
+                      onClick={(e) => e.stopPropagation()}
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        adicionarItem(meta, novoItemTexto[meta.id] ?? "");
+                      }}
+                      className="flex gap-2 mt-1"
+                    >
+                      <input
+                        value={novoItemTexto[meta.id] ?? ""}
+                        onChange={(e) =>
+                          setNovoItemTexto((prev) => ({ ...prev, [meta.id]: e.target.value }))
+                        }
+                        placeholder="Adicionar item..."
+                        className="flex-1 px-2.5 py-1.5 rounded-md text-xs outline-none border"
+                        style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}
+                      />
+                      <button
+                        type="submit"
+                        className="px-3 py-1.5 rounded-md text-xs font-semibold"
+                        style={{ background: "var(--accent)", color: "#0f1420" }}
+                      >
+                        +
+                      </button>
+                    </form>
+                  )}
+                </div>
               )}
             </div>
           );
