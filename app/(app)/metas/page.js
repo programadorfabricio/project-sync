@@ -10,6 +10,10 @@ const TIPOS = [
   { v: "anual", label: "Anuais" },
 ];
 
+const TIPO_SINGULAR = { diaria: "Diária", semanal: "Semanal", mensal: "Mensal", anual: "Anual" };
+
+const ABAS = [{ v: "todas", label: "Todas" }, ...TIPOS];
+
 export default function MetasPage() {
   const { supabase, perfil, recarregarPerfil } = useAuth();
   const [metas, setMetas] = useState([]);
@@ -54,7 +58,7 @@ export default function MetasPage() {
     const hoje = new Date().toISOString().slice(0, 10);
     await supabase.from("metas").insert({
       titulo: form.titulo,
-      tipo,
+      tipo: tipoCriacao,
       valor_alvo: Number(form.valor_alvo),
       unidade: form.unidade,
       responsavel_id: perfil.id,
@@ -135,7 +139,8 @@ export default function MetasPage() {
     carregar();
   }
 
-  const filtradas = metas.filter((m) => m.tipo === tipo);
+  const tipoCriacao = tipo === "todas" ? "diaria" : tipo;
+  const filtradas = tipo === "todas" ? metas : metas.filter((m) => m.tipo === tipo);
 
   return (
     <div>
@@ -156,7 +161,7 @@ export default function MetasPage() {
       </div>
 
       <div className="flex gap-1 mb-6 p-1 rounded-lg w-fit" style={{ background: "var(--surface-2)" }}>
-        {TIPOS.map((t) => (
+        {ABAS.map((t) => (
           <button
             key={t.v}
             onClick={() => setTipo(t.v)}
@@ -174,7 +179,9 @@ export default function MetasPage() {
       {filtradas.length === 0 && (
         <div className="text-center py-16 rounded-xl border border-dashed" style={{ borderColor: "var(--border)" }}>
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            Nenhuma meta {TIPOS.find((t) => t.v === tipo)?.label.toLowerCase()} ainda.
+            {tipo === "todas"
+              ? "Nenhuma meta ainda."
+              : `Nenhuma meta ${TIPOS.find((t) => t.v === tipo)?.label.toLowerCase()} ainda.`}
           </p>
         </div>
       )}
@@ -206,7 +213,17 @@ export default function MetasPage() {
                     {expandida ? "▾" : "▸"}
                   </span>
                   <div>
-                    <h3 className="font-semibold text-sm">{meta.titulo}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm">{meta.titulo}</h3>
+                      {tipo === "todas" && (
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide"
+                          style={{ background: "var(--surface-2)", color: "var(--text-muted)" }}
+                        >
+                          {TIPO_SINGULAR[meta.tipo]}
+                        </span>
+                      )}
+                    </div>
                     {meta.responsavel && (
                       <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                         Criada por {meta.responsavel.avatar_emoji} {meta.responsavel.nome}
@@ -349,7 +366,7 @@ export default function MetasPage() {
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}
           >
             <h2 className="font-display text-lg font-semibold">
-              Nova meta {TIPOS.find((t) => t.v === tipo)?.label.toLowerCase()}
+              Nova meta {TIPOS.find((t) => t.v === tipoCriacao)?.label.toLowerCase()}
             </h2>
             <input
               required
