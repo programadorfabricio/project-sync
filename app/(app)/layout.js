@@ -11,6 +11,8 @@ const NAV = [
   { href: "/ideias", label: "Ideias", icon: "✦" },
   { href: "/metas", label: "Metas", icon: "◎" },
   { href: "/tarefas", label: "Tarefas", icon: "▦" },
+  { href: "/calendario", label: "Calendário", icon: "▤" },
+  { href: "/chat", label: "Chat", icon: "◈" },
 ];
 
 export default function AppLayout({ children }) {
