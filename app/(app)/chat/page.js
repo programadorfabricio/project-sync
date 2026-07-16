@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
+import { useNaoLidas } from "@/lib/NaoLidasContext";
 
 export default function ChatPage() {
   const { supabase, perfil } = useAuth();
+  const { marcarComoLido } = useNaoLidas();
   const [mensagens, setMensagens] = useState([]);
   const [texto, setTexto] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -22,6 +24,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     carregarHistorico();
+    marcarComoLido();
 
     const canal = supabase
       .channel("mensagens-realtime")
@@ -37,6 +40,7 @@ export default function ChatPage() {
             .single();
 
           setMensagens((prev) => [...prev, { ...payload.new, remetente }]);
+          marcarComoLido();
         }
       )
       .subscribe();

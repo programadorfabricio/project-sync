@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
+import { NaoLidasProvider, useNaoLidas } from "@/lib/NaoLidasContext";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "◆" },
@@ -32,7 +33,7 @@ export default function AppLayout({ children }) {
     );
   }
 
-  return (
+  return(<NaoLidasProvider>
     <div className="min-h-screen flex" style={{ background: "var(--bg)" }}>
       <aside
         className="w-60 shrink-0 border-r flex flex-col p-4"
@@ -58,6 +59,7 @@ export default function AppLayout({ children }) {
               >
                 <span className="text-base leading-none">{item.icon}</span>
                 {item.label}
+                {item.href === "/chat" && <BadgeChat />}
               </Link>
             );
           })}
@@ -97,5 +99,18 @@ export default function AppLayout({ children }) {
         <div className="max-w-5xl mx-auto p-8">{children}</div>
       </main>
     </div>
+     </NaoLidasProvider> 
+  );
+}
+function BadgeChat() {
+  const { naoLidas } = useNaoLidas();
+  if (naoLidas === 0) return null;
+  return (
+    <span
+      className="ml-auto min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center"
+      style={{ background: "var(--danger)", color: "#fff" }}
+    >
+      {naoLidas > 9 ? "9+" : naoLidas}
+    </span>
   );
 }
