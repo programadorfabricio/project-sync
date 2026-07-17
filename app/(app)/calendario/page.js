@@ -29,6 +29,8 @@ export default function CalendarioPage() {
   const [diaSelecionado, setDiaSelecionado] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [form, setForm] = useState({ titulo: "", hora: "", cor: "#4a9eff" });
+  const [modalTarefa, setModalTarefa] = useState(false);
+  const [formTarefa, setFormTarefa] = useState({ titulo: "", prioridade: "media" });
 
   async function carregar() {
     const { inicio, fim } = inicioFimMes(ano, mes);
@@ -115,6 +117,21 @@ export default function CalendarioPage() {
     });
     setForm({ titulo: "", hora: "", cor: "#4a9eff" });
     setModalAberto(false);
+    carregar();
+  }
+
+  async function criarTarefa(e) {
+    e.preventDefault();
+    if (!formTarefa.titulo.trim() || !diaSelecionado) return;
+    await supabase.from("tarefas").insert({
+      titulo: formTarefa.titulo,
+      prazo: diaSelecionado,
+      prioridade: formTarefa.prioridade,
+      responsavel_id: perfil.id,
+      criado_por: perfil.id,
+    });
+    setFormTarefa({ titulo: "", prioridade: "media" });
+    setModalTarefa(false);
     carregar();
   }
 
@@ -246,6 +263,20 @@ export default function CalendarioPage() {
         })}
       </div>
 
+      <div className="flex items-center gap-4 mt-4 flex-wrap">
+        {[
+          { label: "Tarefa", cor: "var(--sync)" },
+          { label: "Meta", cor: "var(--accent)" },
+          { label: "Projeto", cor: "var(--text-muted)" },
+          { label: "Evento", cor: "#4a9eff" },
+        ].map((l) => (
+          <span key={l.label} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: l.cor }} />
+            {l.label}
+          </span>
+        ))}
+      </div>
+
       {diaSelecionado && (
         <div
           className="fixed inset-0 flex items-center justify-center p-6 z-50"
@@ -264,13 +295,22 @@ export default function CalendarioPage() {
                   month: "long",
                 })}
               </h2>
-              <button
-                onClick={() => setModalAberto(true)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-                style={{ background: "var(--accent)", color: "#0f1420" }}
-              >
-                + Evento
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setModalTarefa(true)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border"
+                  style={{ borderColor: "var(--sync)", color: "var(--sync)" }}
+                >
+                  + Tarefa
+                </button>
+                <button
+                  onClick={() => setModalAberto(true)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: "var(--accent)", color: "#0f1420" }}
+                >
+                  + Evento
+                </button>
+              </div>
             </div>
 
             {itensDoSelecionado.length === 0 && (
@@ -383,6 +423,65 @@ export default function CalendarioPage() {
                 style={{ background: "var(--accent)", color: "#0f1420" }}
               >
                 Salvar
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {modalTarefa && diaSelecionado && (
+        <div
+          className="fixed inset-0 flex items-center justify-center p-6 z-[60]"
+          style={{ background: "#00000090" }}
+          onClick={() => setModalTarefa(false)}
+        >
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={criarTarefa}
+            className="w-full max-w-md rounded-2xl p-6 border flex flex-col gap-4"
+            style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+          >
+            <h2 className="font-display text-lg font-semibold">
+              Nova tarefa —{" "}
+              {new Date(diaSelecionado + "T00:00:00").toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "long",
+              })}
+            </h2>
+            <input
+              required
+              autoFocus
+              value={formTarefa.titulo}
+              onChange={(e) => setFormTarefa({ ...formTarefa, titulo: e.target.value })}
+              placeholder="Ex: Revisar proposta do cliente"
+              className="px-3 py-2.5 rounded-lg text-sm outline-none border"
+              style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}
+            />
+            <select
+              value={formTarefa.prioridade}
+              onChange={(e) => setFormTarefa({ ...formTarefa, prioridade: e.target.value })}
+              className="px-3 py-2.5 rounded-lg text-sm outline-none border"
+              style={{ background: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
+            >
+              <option value="baixa">Prioridade baixa</option>
+              <option value="media">Prioridade média</option>
+              <option value="alta">Prioridade alta</option>
+            </select>
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                type="button"
+                onClick={() => setModalTarefa(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-lg text-sm font-semibold"
+                style={{ background: "var(--sync)", color: "#0f1420" }}
+              >
+                Criar tarefa
               </button>
             </div>
           </form>
