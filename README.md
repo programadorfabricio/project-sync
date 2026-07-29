@@ -2,6 +2,21 @@
 
 Ideias, metas e tarefas — sincronizados entre você e seu grupo.
 
+## 📸 Screenshots
+
+### Dashboard & Ranking
+![Dashboard](./Captura%20de%20tela%202026-07-28%20215258.png)
+
+### Chat em Tempo Real
+![Chat](./Captura%20de%20tela%202026-07-28%20215311.png)
+
+### Kanban (Tarefas com Drag-and-Drop)
+![Kanban](./Captura%20de%20tela%202026-07-28%20215323.png)
+
+### Calendário Integrado
+![Calendário](./Captura%20de%20tela%202026-07-28%20215333.png)
+
+
 ## O que tem nessa primeira versão
 
 - **Login/cadastro** (Supabase Auth)
